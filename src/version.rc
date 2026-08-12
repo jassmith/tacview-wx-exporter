@@ -1,0 +1,52 @@
+// Windows version metadata for the proxy DLL.
+//
+// Server management tooling (serverbot among others) reads this block to
+// decide whether the Tacview install is current. With the fields empty — which
+// is what a bare `cl /LD` produces — that check has nothing to read: with
+// autoupdate off it errors, and with autoupdate on it "repairs" the install by
+// replacing this DLL with the stock one, silently uninstalling the exporter.
+//
+// So the version fields carry the version of the recorder we forward to, which
+// is also the version actually doing the recording. The descriptive fields say
+// plainly what the file is, so anyone inspecting it sees the wrapper rather
+// than being misled about its origin.
+//
+// DKSWX_VERSION / DKSWX_VERSION_CSV are meant to be overridden at build time
+// with the version of the Tacview DLL being packaged against; the defaults
+// below are only for manual builds.
+
+#ifndef DKSWX_VERSION
+#define DKSWX_VERSION "1.9.5.201"
+#endif
+#ifndef DKSWX_VERSION_CSV
+#define DKSWX_VERSION_CSV 1, 9, 5, 201
+#endif
+
+1 VERSIONINFO
+FILEVERSION DKSWX_VERSION_CSV
+PRODUCTVERSION DKSWX_VERSION_CSV
+FILEFLAGSMASK 0x3fL
+FILEFLAGS 0x0L
+FILEOS 0x40004L
+FILETYPE 0x2L
+FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"
+        BEGIN
+            VALUE "ProductName", "Tacview"
+            VALUE "ProductVersion", DKSWX_VERSION
+            VALUE "FileVersion", DKSWX_VERSION
+            VALUE "InternalName", "Tacview"
+            VALUE "OriginalFilename", "tacview.dll"
+            VALUE "FileDescription", "DKS weather exporter (wrapper for Tacview flight recorder)"
+            VALUE "CompanyName", "Digital Kneeboard Simulator"
+            VALUE "Comments", "Forwards all recording to tacview_real.dll and adds weather and engine events to the ACMI. Version reflects the wrapped Tacview recorder."
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END

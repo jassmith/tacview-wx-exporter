@@ -1,0 +1,5 @@
+; The real recorder exports exactly one symbol, so the proxy must too —
+; anything else and `require('tacview')` would not find its entry point.
+LIBRARY tacview
+EXPORTS
+    luaopen_tacview

@@ -166,6 +166,17 @@ local EVENT_INSTALL = [[
 			[world.event.S_EVENT_REFUELING] = 'Refuel',
 			[world.event.S_EVENT_REFUELING_STOP] = 'RefuelStop',
 		}
+		-- Unit and player names are free text and routinely contain '|'
+		-- ("FIWB | Miyagi | 400"), which is also the event line's field
+		-- delimiter. They cannot be scrubbed like `note` — a name must
+		-- round-trip EXACTLY or it will never match what Tacview recorded —
+		-- and only one field per line can be captured greedily on the other
+		-- side, which is one fewer than needed. So pipes are transposed to
+		-- \1 here and restored after the split in the drain. (v1.0.0 shipped
+		-- without this; every event whose subject was a human with a piped
+		-- player name — all traps, LSO grades and takeoffs on a squadron
+		-- server — was silently dropped as unresolvable.)
+		local function enc(s) return (s:gsub('|', '\1')) end
 		local handler = {}
 		function handler:onEvent(e)
 			local kind = e and wanted[e.id]
@@ -190,12 +201,9 @@ local EVENT_INSTALL = [[
 			local note = (type(e.comment) == 'string' and e.comment)
 				or (ok4 and wep) or (ok3 and place) or ''
 			note = tostring(note):gsub('[|\n\r]', ' ')
-			-- Player names are free text and routinely contain '|'
-			-- ("FIWB | Miyagi | 400"), so they must stay in trailing fields
-			-- that are captured greedily rather than split.
 			_DKSWX_EV[#_DKSWX_EV + 1] = string.format('%s|%.2f|%s|%s|%s|%s|%s', kind,
-				timer.getTime(), ok1 and who or '', ok2 and tgt or '', note,
-				playerIni, playerTgt)
+				timer.getTime(), enc(ok1 and who or ''), enc(ok2 and tgt or ''), note,
+				enc(playerIni), enc(playerTgt))
 		end
 		world.addEventHandler(handler)
 	end
@@ -249,11 +257,16 @@ local function pumpEvents()
 				births, BIRTH_BATCH_CAP))
 		end
 
+		-- Every field is pipe-free on the wire (pipes ride as \1, see the
+		-- handler), so a strict split is safe; names are restored here.
+		local function dec(s) return (s:gsub('\1', '|')) end
 		local out = {}
 		for line in batch:gmatch('[^\n]+') do
 			local kind, t, who, tgt, note, playerIni, playerTgt =
-				line:match('^([^|]*)|([^|]*)|([^|]*)|([^|]*)|([^|]*)|([^|]*)|?(.*)$')
+				line:match('^([^|]*)|([^|]*)|([^|]*)|([^|]*)|([^|]*)|([^|]*)|([^|]*)$')
 			if kind then
+				who, tgt = dec(who), dec(tgt)
+				playerIni, playerTgt = dec(playerIni), dec(playerTgt)
 				-- Map onto Tacview's own vocabulary where one exists, so other
 				-- readers understand it without knowing anything about us.
 				-- Everything else rides as Message with a DKS: prefix, which

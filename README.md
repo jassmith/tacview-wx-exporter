@@ -104,6 +104,22 @@ dropped as "never declared by Tacview". Events therefore carry a second
 resolution key — the player name from `getPlayerName()` — and the injector
 tries both.
 
+The player-name key has a trap of its own, found the hard way (v1.1.0):
+squadron player names routinely contain the pipe character (`Vy14 | 204 |
+Hash`) — which is also the field delimiter of the mission→GUI event line.
+Only the line's final field can be captured greedily, and there are two
+player-name fields, so the initiator's name silently truncated at its first
+pipe and every human-initiated event — every trap, LSO grade, takeoff and
+shot on a squadron server — failed resolution and dropped. (Events where the
+human was the *target* survived, because that name rides in the final greedy
+field — which is what gave the bug away.) Names must round-trip exactly to
+match what Tacview recorded, so they cannot be scrubbed like the free-text
+`note`; instead pipes are transposed to `\1` across the state hop and
+restored after the split. Unit names get the same treatment across that hop;
+a *unit* name containing a pipe still cannot survive the events-file hop to
+the injector (its fields split non-greedily), which is unchanged and has not
+been observed in practice.
+
 One departure can still arrive twice, because the classic pair and the
 runway pair are both subscribed and overlap. Takeoff, landing and LSO events
 collapse repeats of the same kind and subject within 20 s. Hits and shots are

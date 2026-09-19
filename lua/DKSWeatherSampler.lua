@@ -176,7 +176,15 @@ local EVENT_INSTALL = [[
 		-- without this; every event whose subject was a human with a piped
 		-- player name — all traps, LSO grades and takeoffs on a squadron
 		-- server — was silently dropped as unresolvable.)
-		local function enc(s) return (s:gsub('|', '\1')) end
+		-- getName() is not always a string: scenery objects (buildings,
+		-- trees) return a numeric id, and other object types may follow.
+		-- Indexing a number threw inside world.onEvent, which DCS logs as
+		-- a Lua::Config error on every such event and drops the line, so
+		-- every kill against scenery was lost. Coerce first.
+		local function enc(s)
+			if s == nil then return '' end
+			return (tostring(s):gsub('|', '\1'))
+		end
 		local handler = {}
 		function handler:onEvent(e)
 			local kind = e and wanted[e.id]

@@ -166,6 +166,7 @@ bool patchImport(HMODULE mod, const char* funcName, void* replacement, void** or
  * line, metres and metres/second in DCS's frame:
  *
  *   qnh <hectopascals>
+ *   t <sea-level temperature, celsius>
  *   w <altitudeM> <north> <up> <east>
  *
  * Anything unparseable is ignored rather than fatal — a half-written file just
@@ -195,6 +196,8 @@ void refreshProfileIfChanged() {
 
   dkswx::WindProfile profile;
   double qnh = 0.0;
+  double tempC = 0.0;
+  bool haveTemp = false;
   size_t pos = 0;
   while (pos < text.size()) {
     size_t nl = text.find('\n', pos);
@@ -209,6 +212,9 @@ void refreshProfileIfChanged() {
       }
     } else if (line.rfind("qnh ", 0) == 0) {
       qnh = atof(line.c_str() + 4);
+    } else if (line.rfind("t ", 0) == 0) {
+      tempC = atof(line.c_str() + 2);
+      haveTemp = true;
     }
   }
 
@@ -223,6 +229,7 @@ void refreshProfileIfChanged() {
   if (g_injector != nullptr) {
     g_injector->setProfile(profile);
     if (qnh > 0.0) g_injector->setQnhHpa(qnh);
+    if (haveTemp) g_injector->setTemperatureC(tempC);
   }
   LeaveCriticalSection(&g_lock);
 }

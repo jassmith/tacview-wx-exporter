@@ -140,6 +140,7 @@ void Injector::reset() {
   time_ = 0.0;
   sawFirstFrame_ = false;
   qnhEmitted_ = false;
+  temperatureEmitted_ = false;
   objects_.clear();
   unitToObject_.clear();
   events_.clear();
@@ -347,6 +348,12 @@ std::string Injector::buildWeatherBlock() {
     std::snprintf(buf, sizeof(buf), "0,QNH=%.2f\n", qnhHpa_);
     out += buf;
     qnhEmitted_ = true;
+  }
+  if (cfg_.emitTemperature && haveTemperature_ && !temperatureEmitted_) {
+    char buf[64];
+    std::snprintf(buf, sizeof(buf), "0,Temperature=%.1f\n", temperatureC_);
+    out += buf;
+    temperatureEmitted_ = true;
   }
 
   if (profile_.empty()) return out;

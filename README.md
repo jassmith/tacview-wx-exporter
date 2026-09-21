@@ -1,6 +1,7 @@
 # DKS Tacview Weather Exporter
 
-Adds wind and QNH to the ACMI recordings a DCS **dedicated server** produces.
+Adds wind, QNH and sea-level temperature to the ACMI recordings a DCS
+**dedicated server** produces.
 
 ## About this project
 
@@ -131,12 +132,23 @@ unit, so on a large mission a fraction of ground kills have no object to attach
 to; the log makes that count visible rather than silent.
 
 Injected lines use Tacview's own native property names on the objects Tacview
-itself declared:
+itself declared, plus one global of our own:
 
 ```
 0,QNH=1013.25
+0,Temperature=31.4
 5901,WindDirection=129.7,WindPitch=0.0,WindSpeed=4.07
 ```
+
+`Temperature` is the sea-level temperature in °C — the mission's ISA
+departure. Tacview has no native property for it and ignores the line; it is
+there because a recording's true airspeed can only be turned back into the
+calibrated airspeed the pilot saw if the speed of sound is known, and that is
+set by temperature. A Persian Gulf afternoon at ISA+25 reads about 4 % lower
+on the gauge than a standard day for the same TAS, which is what every
+consumer assumed before this line existed. It is sampled from
+`atmosphere.getTemperatureAndPressure` at MSL (the atmosphere the sim is
+applying), falling back to the mission table's season temperature.
 
 Three properties of this design are load-bearing:
 

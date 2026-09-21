@@ -80,6 +80,14 @@ struct InjectorConfig {
   double refreshIntervalSec = 10.0;
   /** Emit `0,QNH=` once, the first time a QNH value is supplied. */
   bool emitQnh = true;
+  /**
+   * Emit `0,Temperature=` (sea-level °C) once, the first time a value is
+   * supplied. Not a Tacview-native property — Tacview ignores it — but it is
+   * what lets a consumer turn the recording's TAS into the CAS the pilot saw:
+   * the pitot conversion needs Mach, which needs the speed of sound, which
+   * needs temperature. Without it every consumer assumes a standard day.
+   */
+  bool emitTemperature = true;
 };
 
 /**
@@ -145,6 +153,11 @@ class Injector {
   /** Replace the wind ladder (called when the sampler produces a new one). */
   void setProfile(const WindProfile& p) { profile_ = p; }
   void setQnhHpa(double hpa) { qnhHpa_ = hpa; }
+  /** Sea-level temperature, °C. */
+  void setTemperatureC(double c) {
+    temperatureC_ = c;
+    haveTemperature_ = true;
+  }
 
   /**
    * Queue an engine event. Emitted once the stream's clock reaches its time
@@ -222,6 +235,9 @@ class Injector {
   WindProfile profile_;
   double qnhHpa_ = 0.0;
   bool qnhEmitted_ = false;
+  double temperatureC_ = 0.0;
+  bool haveTemperature_ = false;
+  bool temperatureEmitted_ = false;
 
   /** Output not yet written: Tacview's bytes plus the splices already made. */
   std::string hold_;

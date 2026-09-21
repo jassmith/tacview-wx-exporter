@@ -56,6 +56,15 @@ end
 
 -- Runs inside the mission environment. DCS wind is horizontally uniform, so a
 -- single column reproduces the field; y is altitude MSL.
+--
+-- The sea-level temperature rides along as a `t <celsius>` line. It is what
+-- turns a recording's true airspeed into the calibrated airspeed the pilot
+-- actually saw: CAS depends on Mach, Mach on the speed of sound, and that on
+-- temperature — a Persian Gulf afternoon at ISA+25 reads ~4 % lower on the
+-- gauge than a standard day for the same TAS. Read from
+-- atmosphere.getTemperatureAndPressure at MSL (Kelvin; converted here) so it
+-- reflects the atmosphere the sim is applying, with the mission table's
+-- season temperature as the GUI-side fallback.
 local function payload()
 	return string.format([[
 		local out = {}
@@ -64,6 +73,10 @@ local function payload()
 			if ok and w then
 				out[#out+1] = string.format('w %%d %%.4f %%.4f %%.4f', alt, w.x, w.y, w.z)
 			end
+		end
+		local okT, tK = pcall(atmosphere.getTemperatureAndPressure, { x = 0, y = 0, z = 0 })
+		if okT and type(tK) == 'number' and tK > 100 then
+			out[#out+1] = string.format('t %%.2f', tK - 273.15)
 		end
 		return table.concat(out, '\n')
 	]], MAX_ALTITUDE_M, ALTITUDE_STEP_M)
@@ -77,6 +90,16 @@ local function qnhLine()
 	local mmhg = mission.weather.qnh
 	if type(mmhg) ~= 'number' or mmhg <= 0 then return nil end
 	return string.format('qnh %.2f', mmhg * 1.33322387415)
+end
+
+-- Fallback sea-level temperature from the mission table (°C, the ME's
+-- "Temperature" field), used only when the mission-side sample produced none.
+local function temperatureLine()
+	local ok, mission = pcall(function() return DCS.getCurrentMission().mission end)
+	if not ok or not mission or not mission.weather or not mission.weather.season then return nil end
+	local c = mission.weather.season.temperature
+	if type(c) ~= 'number' then return nil end
+	return string.format('t %.2f', c)
 end
 
 local function writeProfile(body)
@@ -110,6 +133,10 @@ local function sample()
 	local parts = {}
 	local qnh = qnhLine()
 	if qnh then parts[#parts+1] = qnh end
+	if not result:find('\nt ') then
+		local t = temperatureLine()
+		if t then parts[#parts+1] = t end
+	end
 	parts[#parts+1] = result
 	writeProfile(table.concat(parts, '\n') .. '\n')
 end

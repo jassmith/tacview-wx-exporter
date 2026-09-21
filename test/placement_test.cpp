@@ -394,6 +394,38 @@ int main() {
           "the kill resolves via the alt key carried by the later duplicate");
   }
 
+  {
+    // Atmosphere globals: QNH and sea-level temperature are emitted exactly
+    // once each, after the first frame marker (property lines mean nothing in
+    // the header), and never again for the rest of the recording.
+    dkswx::Injector inj;
+    inj.setQnhHpa(1005.25);
+    inj.setTemperatureC(31.37);
+    const std::string out = runThrough(inj, stream, chunks);
+
+    auto countOf = [&](const std::string& needle) {
+      size_t n = 0;
+      for (size_t p = out.find(needle); p != std::string::npos; p = out.find(needle, p + 1)) ++n;
+      return n;
+    };
+    check(countOf("0,QNH=1005.25\n") == 1, "QNH emitted exactly once");
+    check(countOf("0,Temperature=31.4\n") == 1, "temperature emitted exactly once, 0.1 °C");
+    check(out.find("0,Temperature=") > out.find("#0.00\n"),
+          "temperature lands after the first frame marker, not in the header");
+    check(out.size() == stream.size() + std::string("0,QNH=1005.25\n").size() +
+                            std::string("0,Temperature=31.4\n").size(),
+          "only the two global lines were added");
+  }
+
+  {
+    // No temperature supplied: no line, byte-for-byte as before.
+    dkswx::Injector inj;
+    inj.setQnhHpa(1013.25);
+    const std::string out = runThrough(inj, stream, chunks);
+    check(out.find("0,Temperature=") == std::string::npos,
+          "no temperature line when none was sampled");
+  }
+
   std::printf("\n%s\n", g_failures == 0 ? "ALL PASS" : "FAILURES");
   return g_failures == 0 ? 0 : 1;
 }
